@@ -1,0 +1,36 @@
+BootStrap: yum
+OSVersion: 7
+MirrorURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/os/$basearch/
+Include: yum
+
+%help
+Help me.  I'm in the container.
+
+%runscript
+    export PATH="/miniconda/bin:/ANIcalculator_v1:$PATH"
+    echo "This is what happens when you run the container..."
+    conda info
+    ANIcalculator
+    dRep
+
+%post
+    yum install -y wget bzip2 tar gzip
+    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ./miniconda.sh
+    chmod 770 ./miniconda.sh
+    ./miniconda.sh -b -p ./miniconda
+    rm ./miniconda.sh
+
+    wget https://ani.jgi-psf.org/download_files/ANIcalculator_v1.tgz
+    gunzip ANIcalculator_v1.tgz
+    tar -xvf ANIcalculator_v1.tar
+    chmod -R 755 ANIcalculator_v1
+
+    source /miniconda/bin/activate
+    /usr/bin/yes | pip install drep
+
+    conda install -c bioconda mash mummer prodigal
+
+    conda create -n py27 python=2.7
+    source activate py27
+    conda install -c bioconda checkm-genome
+    source deactivate
