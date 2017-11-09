@@ -3,34 +3,159 @@ OSVersion: 7
 MirrorURL: http://mirror.centos.org/centos-%{OSVERSION}/%{OSVERSION}/os/$basearch/
 Include: yum
 
-%help
-Help me.  I'm in the container.
-
-%runscript
-    export PATH="/miniconda/bin:/ANIcalculator_v1:$PATH"
-    echo "This is what happens when you run the container..."
-    conda info
-    ANIcalculator
-    dRep
-
+# ========================
+# global
+# ========================
 %post
-    yum install -y wget bzip2 tar gzip
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ./miniconda.sh
-    chmod 770 ./miniconda.sh
-    ./miniconda.sh -b -p ./miniconda
-    rm ./miniconda.sh
+    yum install -y wget bzip2 tar gzip unzip git make gcc csh gcc-c++ zlib-devel openssl-devel which hostname
+    wget https://www.python.org/ftp/python/3.6.3/Python-3.6.3.tgz
+    wget https://www.python.org/ftp/python/2.7.14/Python-2.7.14.tgz
 
+    gunzip Python-3.6.3.tgz
+    tar -xvf Python-3.6.3.tar
+    rm Python-3.6.3.tar
+    cd Python-3.6.3
+    ./configure --prefix=/usr/local
+    make && make altinstall
+    cd ../
+
+    gunzip Python-2.7.14.tgz
+    tar -xvf Python-2.7.14.tar
+    rm Python-2.7.14.tar
+    cd Python-2.7.14
+    ./configure --prefix=/usr/local
+    make && make altinstall
+    cd ../
+
+    wget --no-check-certificate https://pypi.python.org/packages/source/s/setuptools/setuptools-1.4.2.tar.gz
+    tar -xvf setuptools-1.4.2.tar.gz
+    rm setuptools-1.4.2.tar.gz
+    cd setuptools-1.4.2
+    python2.7 setup.py install
+    cd ..
+ 
+    curl https://bootstrap.pypa.io/get-pip.py | python2.7 -
+    chmod -R 775 /usr/local
+    
+
+%environment
+    export PATH=/usr/local/bin:$PATH
+
+
+# ========================
+# ANIcalculator
+# ========================
+%appinstall ANIcalculator
     wget https://ani.jgi-psf.org/download_files/ANIcalculator_v1.tgz
     gunzip ANIcalculator_v1.tgz
     tar -xvf ANIcalculator_v1.tar
+    rm -r ANIcalculator_v1.tar
     chmod -R 755 ANIcalculator_v1
 
-    source /miniconda/bin/activate
-    /usr/bin/yes | pip install drep
+%appenv ANIcalculator
+    ANIcalculator=/scif/apps/ANIcalculator/ANIcalculator_v1/ANIcalculator
+    export ANIcalculator
 
-    conda install -c bioconda mash mummer prodigal
+%apphelp ANIcalculator
+    exec $ANIcalculator -help
 
-    conda create -n py27 python=2.7
-    source activate py27
-    conda install -c bioconda checkm-genome
-    source deactivate
+%apprun ANIcalculator
+    $ANIcalculator "$@"
+
+# ========================
+# Mash
+# ========================
+%appinstall mash
+    wget https://github.com/marbl/Mash/releases/download/v1.1.1/mash-Linux64-v1.1.1.tar.gz
+    tar -xvf mash-Linux64-v1.1.1.tar.gz
+    rm -r mash-Linux64-v1.1.1.tar.gz
+    chmod -R 775 mash-Linux64-v1.1.1
+
+%appenv mash
+    mash=/scif/apps/mash/mash-Linux64-v1.1.1/mash
+    export mash
+
+%apprun mash
+    $mash "$@"
+
+# ========================
+# mummer
+# ========================
+%appinstall mummer
+    wget https://sourceforge.net/projects/mummer/files/latest/MUMmer3.23.tar.gz
+    tar -xvf MUMmer3.23.tar.gz
+    rm -r MUMmer3.23.tar.gz
+    cd MUMmer3.23 && make install
+
+%appenv mummer
+    mummer=/scif/apps/mummer/MUMmer3.23/mummer
+    export mummer
+
+%apprun mummer
+    $mummer "$@"
+
+
+# ========================
+# prodigal
+# ========================
+%appinstall prodigal
+    wget https://github.com/hyattpd/Prodigal/releases/download/v2.6.3/prodigal.linux
+    mv prodigal.linux prodigal
+
+%appenv prodigal
+    prodigal=/scif/apps/prodigal/prodigal
+    export prodigal
+
+%apprun prodigal
+    $prodigal "$@"
+
+
+# ========================
+# checkm
+# ========================
+%appinstall checkm
+    wget http://eddylab.org/software/hmmer3/3.1b2/hmmer-3.1b2-linux-intel-x86_64.tar.gz
+    tar -xvf hmmer-3.1b2-linux-intel-x86_64.tar.gz
+
+    wget https://github.com/matsen/pplacer/releases/download/v1.1.alpha17/pplacer-Linux-v1.1.alpha17.zip
+    unzip pplacer-Linux-v1.1.alpha17.zip
+
+    pip2.7 install numpy
+    pip2.7 install checkm-genome
+    chmod -R 775 /usr/local
+    checkm setRoot /usr/local/checkm-data
+    
+    
+%appenv checkm
+    export PATH=/hmmer-3.1b2-linux-intel-x86_64/binaries:$PATH
+    export PATH=/scifi/apps/checkm/pplacer-Linux-v1.1.alpha17:$PATH
+    export PATH=$APPDATA_prodigal:$PATH
+
+%apprun checkm
+    checkm "$@"
+
+# ========================
+# centrifuge
+# ========================
+%appinstall centrifuge
+    wget https://github.com/infphilo/centrifuge/archive/f39767eb57d8e175029c.tar.gz
+    tar -xvf f39767eb57d8e175029c.tar.gz
+    cd centrifuge-f39767eb57d8e175029c
+    make
+    make install prefix=/usr/local
+
+%appenv centrifuge
+    centrifuge=/scif/apps/centrifuge/centrifuge-f39767eb57d8e175029c/centrifuge
+    export centrifuge
+
+%apprun centrifuge
+    $centrifuge "$@"
+    
+
+
+# ========================
+# dRep
+# ========================    
+#%appinstall dRep
+
+    
